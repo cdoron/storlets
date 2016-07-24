@@ -28,7 +28,7 @@ sudo apt-get update
 sudo apt-get install lxc-docker -y
 
 # run the swift docker container
-sudo docker run -i -d --device=/dev/loop0 --name swift -t ubuntu:14.04
+sudo docker run -i -d --privileged=true --name swift -t ubuntu:14.04
 export SWIFT_IP=`sudo docker exec swift  ifconfig | grep "inet addr" | head -1 | awk '{print $2}' | awk -F":" '{print $2}'`
 
 sudo docker exec swift apt-get update
@@ -51,6 +51,7 @@ sudo docker exec swift mkdir /root/.ssh
 sudo docker exec swift bash -c "echo `cat ~/.ssh/id_rsa.pub` > /root/.ssh/authorized_keys"
 
 # 3. Take care of host key verification for the current user
+touch ~/.ssh/known_hosts
 ssh-keygen -R $SWIFT_IP -f ~/.ssh/known_hosts
 ssh-keyscan  -H $SWIFT_IP >> ~/.ssh/known_hosts
 
@@ -61,7 +62,7 @@ cd install/swift
 ./install_swift.sh $SWIFT_IP
 cd -
 
-install/storlets/prepare_storlets_install.sh "$FLAVOR"
+install/storlets/prepare_storlets_install.sh "$FLAVOR" "$SWIFT_IP"
 
 # Install Storlets
 cd install/storlets

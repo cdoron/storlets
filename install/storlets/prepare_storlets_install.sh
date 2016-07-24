@@ -4,10 +4,16 @@
 # 1. Jenkins job installation, for running the funciotal tests.
 # 2. Developer instalation.
 # 3. Deployment over existing Swift cluster
-if [ "$#" -ne 1 ]; then
-    echo "Usage: s2aio.sh <flavour>"
+if [ "$#" -gt 2 ]; then
+    echo "Usage: s2aio.sh <flavour> [swift_ip]"
     echo "flavour = jenkins | dev | deploy"
     exit 1
+fi
+
+SWIFT_IP='127.0.0.1'
+
+if [ "$#" -eq 2 ]; then
+    SWIFT_IP="$2"
 fi
 
 FLAVOR="$1"
@@ -44,8 +50,14 @@ if [ "$FLAVOR" == "deploy" ]; then
     fi
 else
     cp installation_vars.yml-sample deploy/installation_vars.yml
-    sed -i 's/<ANSIBLE_USER>/'$USER'/g' deploy/installation_vars.yml
-    sed -i 's/<MGMT_USER>/'$USER'/g' deploy/installation_vars.yml
+    if [ $SWIFT_ID == '127.0.0.1' ]; then
+        sed -i 's/<ANSIBLE_USER>/'$USER'/g' deploy/installation_vars.yml
+        sed -i 's/<MGMT_USER>/'$USER'/g' deploy/installation_vars.yml
+    else
+        sed -i 's/<ANSIBLE_USER>/root/g' deploy/installation_vars.yml
+        sed -i 's/<MGMT_USER>/root/g' deploy/installation_vars.yml
+        sed -i 's/127.0.0.1/'$SWIFT_IP'/g' deploy/installation_vars.yml
+    fi
     sed -i 's/<SWIFT_RUNTIME_USER>/swift/g' deploy/installation_vars.yml
     sed -i 's/<SWIFT_RUNTIME_GROUP>/swift/g' deploy/installation_vars.yml
     if [ "$FLAVOR" == "jenkins" ]; then
@@ -54,7 +66,7 @@ else
         sed -i 's/<STORLETS_REPO_ROOT>/~\/storlets\//g' deploy/installation_vars.yml
     fi
     cp prepare_host-sample deploy/prepare_host
-    sed -i 's/<PREPARING_HOST>/127.0.0.1/g' deploy/prepare_host
+    sed -i 's/<PREPARING_HOST>/'$SWIFT_IP'/g' deploy/prepare_host
 fi
 
 ansible-playbook -s -i deploy/prepare_host prepare_storlets_install.yml
