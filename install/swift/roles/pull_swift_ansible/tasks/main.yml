@@ -33,6 +33,6 @@
        version="HEAD"
 
 - name: Copy cluster_config.json to the swift install location
-  copy: src="{{ playbook_dir }}/cluster_config.json" dest="{{ swift_install_reop_dir }}/{{ swift_install_repo_name }}/provisioning/cluster_config.json"
+  shell: cp /tmp/cluster_config.json "{{ swift_install_reop_dir }}/{{ swift_install_repo_name }}/provisioning/cluster_config.json"
 
 - file: mode=1777 path="{{ swift_install_reop_dir }}/{{swift_install_repo_name}}"

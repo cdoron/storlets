@@ -21,34 +21,44 @@ grep -q -F ${HOSTNAME} /etc/hosts || sudo sed -i '1i127.0.0.1\t'"$HOSTNAME"'' /e
 
 install/install_ansible.sh
 
-# Allow Ansible to ssh locally as the current user without a password
+# install docker
+sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 36A1D7869245C8950F966E92D8576A8BA88D21E9
+sudo sh -c "echo deb https://get.docker.com/ubuntu docker main > /etc/apt/sources.list.d/docker.list"
+sudo apt-get update
+sudo apt-get install lxc-docker -y
+
+# run the swift docker container
+sudo docker run -i -d --device=/dev/loop0 --name swift -t ubuntu:14.04
+export SWIFT_IP=`sudo docker exec swift  ifconfig | grep "inet addr" | head -1 | awk '{print $2}' | awk -F":" '{print $2}'`
+
+sudo docker exec swift apt-get update
+sudo docker exec swift apt-get install software-properties-common -y
+sudo docker exec swift apt-add-repository -y ppa:ansible/ansible
+sudo docker exec swift apt-get update
+sudo docker exec swift apt-get install openssh-server git ansible -y
+sudo docker exec swift service ssh start
+
+# Allow Ansible to ssh as the current user without a password
 # While at it, take care of host key verification.
 # This involves:
 # 1. Generate an rsa key for the current user if necessary
 if [ ! -f ~/.ssh/id_rsa.pub ]; then
     ssh-keygen -q -t rsa -f ~/.ssh/id_rsa -N ""
 fi
-# 2. Add the key to the user's authorized keys
-grep -s -F ${USER} ~/.ssh/authorized_keys || cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
-# 3. Take care of host key verification for the current user
-ssh-keygen -R localhost -f ~/.ssh/known_hosts
-ssh-keyscan -H localhost >> ~/.ssh/known_hosts
-ssh-keyscan -H 127.0.0.1 >> ~/.ssh/known_hosts
 
-# Allow Ansible to ssh locally as root without a password
-sudo mkdir -p /root/.ssh
-sudo grep -s -F ${USER} /root/.ssh/authorized_keys || sudo sh -c 'cat ~/.ssh/id_rsa.pub >> /root/.ssh/authorized_keys'
-sudo sh -c 'echo "" >> /etc/ssh/sshd_config'
-sudo sh -c 'echo "# allow ansible connections from local host" >> /etc/ssh/sshd_config'
-sudo sh -c 'echo "Match Address 127.0.0.1" >> /etc/ssh/sshd_config'
-sudo sh -c 'echo "\tPermitRootLogin without-password" >> /etc/ssh/sshd_config'
-sudo service ssh restart
+# 2. Add the key to the user's authorized keys
+sudo docker exec swift mkdir /root/.ssh
+sudo docker exec swift bash -c "echo `cat ~/.ssh/id_rsa.pub` > /root/.ssh/authorized_keys"
+
+# 3. Take care of host key verification for the current user
+ssh-keygen -R $SWIFT_IP -f ~/.ssh/known_hosts
+ssh-keyscan  -H $SWIFT_IP >> ~/.ssh/known_hosts
 
 # Install Swift
 # TODO: move gcc to swift-installation
 sudo apt-get install -y gcc
 cd install/swift
-./install_swift.sh
+./install_swift.sh $SWIFT_IP
 cd -
 
 install/storlets/prepare_storlets_install.sh "$FLAVOR"

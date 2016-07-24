@@ -13,17 +13,24 @@
 # that can be formatted and mounted as a Swift device.
 # The script assume it 'can sudo'
 
-if [ "$#" -eq 0 ]; then
-    DEVICE='loop0'
-elif [ "$#" -eq 1 ]; then
-    DEVICE=$1
+SWIFT_IP='127.0.0.1'
+DEVICE='loop0'
+
+if [ "$#" -gt 2 ]; then
+    echo "Usage: $0 [ip_of_machine] [device-name]";
+    exit
+fi
+
+if [ "$#" -ge 1 ]; then
+    SWIFT_IP=$1
+fi
+
+if [ "$#" -eq 2 ]; then
+    DEVICE=$2
     if [ $DEVICE != 'loop0' ] &&  [ ! -b "/dev/$DEVICE" ]; then
         echo "$DEVICE is not a block device"
         exit
     fi
-else
-    echo "Usage: $0 [device-name]";
-    exit
 fi
 
 REPODIR='/tmp'
@@ -36,7 +43,22 @@ if [ ! -e vars.yml ]; then
     sudo sed -i 's/<set dir!>/'$REPODIR_REPLACE'/g' vars.yml
 fi
 
+if [ $SWIFT_IP != '127.0.0.1' ]; then
+    sed -i 's/127.0.0.1/'$SWIFT_IP'/g' hosts
+    cat >> hosts <<EOF
+
+[s2aio:vars]
+ansible_ssh_user=root
+EOF
+fi
+
 ansible-playbook -i hosts prepare_swift_install.yml
 
-cd $REPODIR/swift-install/provisioning
-ansible-playbook -s -i swift_dynamic_inventory.py main-install.yml
+if [ $SWIFT_IP == '127.0.0.1' ]; then
+    cd $REPODIR/swift-install/provisioning
+    ansible-playbook -s -i swift_dynamic_inventory.py main-install.yml
+else
+    ssh root@$SWIFT_IP 'ssh-keygen -q -t rsa -f ~/.ssh/id_rsa -N ""'
+    ssh root@$SWIFT_IP 'cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys'
+    ssh root@$SWIFT_IP "bash -c 'cd /tmp/swift-install/provisioning ; ansible-playbook -s -i swift_dynamic_inventory.py main-install.yml'"
+fi
