@@ -50,7 +50,7 @@ if [ "$FLAVOR" == "deploy" ]; then
     fi
 else
     cp installation_vars.yml-sample deploy/installation_vars.yml
-    if [ $SWIFT_ID == '127.0.0.1' ]; then
+    if [ $SWIFT_IP == '127.0.0.1' ]; then
         sed -i 's/<ANSIBLE_USER>/'$USER'/g' deploy/installation_vars.yml
         sed -i 's/<MGMT_USER>/'$USER'/g' deploy/installation_vars.yml
     else
