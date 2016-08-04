@@ -27,8 +27,14 @@ sudo sh -c "echo deb https://get.docker.com/ubuntu docker main > /etc/apt/source
 sudo apt-get update
 sudo apt-get install lxc-docker -y
 
+# build the dind image which supports nested docker container
+git clone https://github.com/jpetazzo/dind
+cd dind
+sudo docker build -t dind .
+cd ..
+
 # run the swift docker container
-sudo docker run -i -d --privileged=true --name swift -t ubuntu:14.04
+sudo docker run -i -d --privileged=true --name swift -t dind
 export SWIFT_IP=`sudo docker exec swift  ifconfig | grep "inet addr" | head -1 | awk '{print $2}' | awk -F":" '{print $2}'`
 
 sudo docker exec swift apt-get update
@@ -54,6 +60,7 @@ sudo docker exec swift bash -c "echo `cat ~/.ssh/id_rsa.pub` > /root/.ssh/author
 touch ~/.ssh/known_hosts
 ssh-keygen -R $SWIFT_IP -f ~/.ssh/known_hosts
 ssh-keyscan  -H $SWIFT_IP >> ~/.ssh/known_hosts
+ssh-add
 
 # Install Swift
 # TODO: move gcc to swift-installation
