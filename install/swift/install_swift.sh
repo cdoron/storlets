@@ -45,6 +45,7 @@ fi
 
 if [ $SWIFT_IP != '127.0.0.1' ]; then
     sed -i 's/127.0.0.1/'$SWIFT_IP'/g' hosts
+    sed -i 's/127.0.0.1/'$SWIFT_IP'/g' templates/cluster_config
     cat >> hosts <<EOF
 
 [s2aio:vars]

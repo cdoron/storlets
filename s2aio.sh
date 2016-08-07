@@ -22,19 +22,13 @@ grep -q -F ${HOSTNAME} /etc/hosts || sudo sed -i '1i127.0.0.1\t'"$HOSTNAME"'' /e
 install/install_ansible.sh
 
 # install docker
-sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 36A1D7869245C8950F966E92D8576A8BA88D21E9
-sudo sh -c "echo deb https://get.docker.com/ubuntu docker main > /etc/apt/sources.list.d/docker.list"
+sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+sudo sh -c "echo deb https://apt.dockerproject.org/repo ubuntu-trusty main > /etc/apt/sources.list.d/docker.list"
 sudo apt-get update
-sudo apt-get install lxc-docker -y
-
-# build the dind image which supports nested docker container
-git clone https://github.com/jpetazzo/dind
-cd dind
-sudo docker build -t dind .
-cd ..
+sudo apt-get install docker-engine -y
 
 # run the swift docker container
-sudo docker run -i -d --privileged=true --name swift -t dind
+sudo docker run -i -d --privileged=true --name swift -t ubuntu:14.04
 export SWIFT_IP=`sudo docker exec swift  ifconfig | grep "inet addr" | head -1 | awk '{print $2}' | awk -F":" '{print $2}'`
 
 sudo docker exec swift apt-get update
@@ -81,4 +75,4 @@ cp install/storlets/deploy/cluster_config.json .
 sudo chown $USER:$USER cluster_config.json
 
 echo "export OS_USERNAME=tester; export OS_PASSWORD=testing;" >> ~/.bashrc
-echo "export OS_TENANT_NAME=test; export OS_AUTH_URL=http://localhost:5000/v2.0" >> ~/.bashrc
+echo "export OS_TENANT_NAME=test; export OS_AUTH_URL=http://"$SWIFT_IP":5000/v2.0" >> ~/.bashrc
